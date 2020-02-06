@@ -173,7 +173,7 @@ class Localizer():
     self.unix_timestamp_millis = log.timestamp
 
     # TODO initing with bad bearing not allowed, maybe not bad?
-    if not self.filter_ready and log.speed > 5:
+    if not self.filter_ready:
       self.filter_ready = True
       initial_ecef = fix_ecef
       gps_bearing = math.radians(log.bearing)

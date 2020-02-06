@@ -56,25 +56,12 @@ class Calibrator():
     self.vps = np.zeros((INPUTS_WANTED, 2))
     self.idx = 0
     self.block_idx = 0
-    self.valid_blocks = 0
+    self.valid_blocks = 20
     self.cal_status = Calibration.UNCALIBRATED
     self.just_calibrated = False
 
-    # Read calibration
-    calibration_params = Params().get("CalibrationParams")
-    if calibration_params:
-      try:
-        calibration_params = json.loads(calibration_params)
-        self.vp = np.array(calibration_params["vanishing_point"])
-        if not np.isfinite(self.vp).all():
-          self.vp = copy.copy(VP_INIT)
-        self.vps = np.tile(self.vp, (INPUTS_WANTED, 1))
-        self.valid_blocks = calibration_params['valid_blocks']
-        if not np.isfinite(self.valid_blocks) or self.valid_blocks < 0:
-          self.valid_blocks = 0
-        self.update_status()
-      except Exception:
-        cloudlog.exception("CalibrationParams file found but error encountered")
+    self.update_status()
+
 
   def update_status(self):
     start_status = self.cal_status
