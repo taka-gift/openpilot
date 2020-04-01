@@ -808,35 +808,6 @@ fail:
   return NULL;
 }
 
-static void* bg_thread(void* args) {
-  UIState *s = (UIState*)args;
-  set_thread_name("bg");
-
-  FramebufferState *bg_fb = framebuffer_init("bg", 0x00001000, false, NULL, NULL);
-  assert(bg_fb);
-
-  int bg_status = -1;
-  while(!do_exit) {
-    pthread_mutex_lock(&s->lock);
-    if (bg_status == s->status) {
-      // will always be signaled if it changes?
-      pthread_cond_wait(&s->bg_cond, &s->lock);
-    }
-    bg_status = s->status;
-    pthread_mutex_unlock(&s->lock);
-
-    assert(bg_status < ARRAYSIZE(bg_colors));
-    const uint8_t *color = bg_colors[bg_status];
-
-    glClearColor(color[0]/256.0, color[1]/256.0, color[2]/256.0, 0.0);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    framebuffer_swap(bg_fb);
-  }
-
-  return NULL;
-}
-
 #endif
 
 int is_leon() {
@@ -877,11 +848,6 @@ int main(int argc, char* argv[]) {
   pthread_t light_sensor_thread_handle;
   err = pthread_create(&light_sensor_thread_handle, NULL,
                        light_sensor_thread, s);
-  assert(err == 0);
-
-  pthread_t bg_thread_handle;
-  err = pthread_create(&bg_thread_handle, NULL,
-                       bg_thread, s);
   assert(err == 0);
 #endif
 
@@ -1052,9 +1018,6 @@ int main(int argc, char* argv[]) {
 
 #ifdef QCOM
   // join light_sensor_thread?
-
-  err = pthread_join(bg_thread_handle, NULL);
-  assert(err == 0);
 #endif
 
   err = pthread_join(connect_thread_handle, NULL);

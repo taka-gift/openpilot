@@ -871,17 +871,21 @@ static void ui_draw_vision(UIState *s) {
   glDisable(GL_BLEND);
 }
 
-static void ui_draw_blank(UIState *s) {
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClear(GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+static void ui_draw_background(UIState *s) {
+  int bg_status = s->status;
+  assert(bg_status < ARRAYSIZE(bg_colors));
+  const uint8_t *color = bg_colors[bg_status];
+
+  glClearColor(color[0]/256.0, color[1]/256.0, color[2]/256.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void ui_draw(UIState *s) {
+  ui_draw_background(s);
   if (s->vision_connected && s->active_app == cereal_UiLayoutState_App_home && s->status != STATUS_STOPPED) {
     ui_draw_sidebar(s);
     ui_draw_vision(s);
   } else {
-    ui_draw_blank(s);
     if (!s->scene.uilayout_sidebarcollapsed) {
       ui_draw_sidebar(s);
     }
