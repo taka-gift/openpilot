@@ -872,11 +872,12 @@ static void ui_draw_background(UIState *s) {
   int bg_status = s->status;
   assert(bg_status < ARRAYSIZE(bg_colors));
   const uint8_t *color = bg_colors[bg_status];
-  glClearColor(color[0]/256.0, color[1]/256.0, color[2]/256.0, 1.0);
+  glClearColor(color[0]/256.0, color[1]/256.0, color[2]/256.0, 0.0);
   glClear(GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 }
 
 // all GL calls should be in here
+// TODO: remove ui_draw_vision_alert from ui.cc
 void ui_draw(UIState *s) {
   ui_draw_background(s);
   if (s->vision_connected && s->active_app == cereal_UiLayoutState_App_home && s->status != STATUS_STOPPED) {
