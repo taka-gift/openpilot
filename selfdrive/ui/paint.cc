@@ -826,9 +826,6 @@ static void ui_draw_vision(UIState *s) {
   int ui_viz_rw = scene->ui_viz_rw;
   int ui_viz_ro = scene->ui_viz_ro;
 
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClear(GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
   // Draw video frames
   glEnable(GL_SCISSOR_TEST);
   glViewport(ui_viz_rx+ui_viz_ro, s->fb_h-(box_y+box_h), viz_w, box_h);
@@ -875,11 +872,11 @@ static void ui_draw_background(UIState *s) {
   int bg_status = s->status;
   assert(bg_status < ARRAYSIZE(bg_colors));
   const uint8_t *color = bg_colors[bg_status];
-
-  glClearColor(color[0]/256.0, color[1]/256.0, color[2]/256.0, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
+  glClearColor(color[0]/256.0, color[1]/256.0, color[2]/256.0, 1.0);
+  glClear(GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 }
 
+// all GL calls should be in here
 void ui_draw(UIState *s) {
   ui_draw_background(s);
   if (s->vision_connected && s->active_app == cereal_UiLayoutState_App_home && s->status != STATUS_STOPPED) {

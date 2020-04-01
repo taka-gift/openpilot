@@ -924,7 +924,6 @@ int main(int argc, char* argv[]) {
         s->scene.satelliteCount = -1;
         s->scene.uilayout_sidebarcollapsed = false;
         ui_draw(s);
-        glFinish();
         should_swap = true;
       }
     }
@@ -946,7 +945,6 @@ int main(int argc, char* argv[]) {
     // Don't waste resources on drawing in case screen is off
     if (s->awake) {
       ui_draw(s);
-      glFinish();
       should_swap = true;
     }
 
