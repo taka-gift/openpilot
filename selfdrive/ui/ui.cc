@@ -154,7 +154,6 @@ static void ui_init(UIState *s) {
   memset(s, 0, sizeof(UIState));
 
   pthread_mutex_init(&s->lock, NULL);
-  pthread_cond_init(&s->bg_cond, NULL);
 
   s->ctx = Context::create();
   s->model_sock = SubSocket::create(s->ctx, "model");
@@ -307,8 +306,6 @@ static ModelData read_model(cereal_ModelData_ptr modelp) {
 static void update_status(UIState *s, int status) {
   if (s->status != status) {
     s->status = status;
-    // wake up bg thread to change
-    pthread_cond_signal(&s->bg_cond);
   }
 }
 
@@ -958,32 +955,6 @@ int main(int argc, char* argv[]) {
 
     if (s->controls_timeout > 0) {
       s->controls_timeout--;
-    } else {
-      // stop playing alert sound
-      if ((!s->vision_connected || (s->vision_connected && s->alert_sound_timeout == 0)) &&
-            s->alert_sound != cereal_CarControl_HUDControl_AudibleAlert_none) {
-        stop_alert_sound(s->alert_sound);
-        s->alert_sound = cereal_CarControl_HUDControl_AudibleAlert_none;
-      }
-
-      // if visiond is still running and controlsState times out, display an alert
-      // TODO: refactor this to not be here
-      if (s->controls_seen && s->vision_connected && strcmp(s->scene.alert_text2, "Controls Unresponsive") != 0) {
-        s->scene.alert_size = ALERTSIZE_FULL;
-        if (s->status != STATUS_STOPPED) {
-          update_status(s, STATUS_ALERT);
-        }
-        snprintf(s->scene.alert_text1, sizeof(s->scene.alert_text1), "%s", "TAKE CONTROL IMMEDIATELY");
-        snprintf(s->scene.alert_text2, sizeof(s->scene.alert_text2), "%s", "Controls Unresponsive");
-        ui_draw_vision_alert(s, s->scene.alert_size, s->status, s->scene.alert_text1, s->scene.alert_text2);
-
-        s->alert_sound_timeout = 2 * UI_FREQ;
-
-        s->alert_sound = cereal_CarControl_HUDControl_AudibleAlert_chimeWarningRepeat;
-        play_alert_sound(s->alert_sound);
-      }
-      s->alert_sound_timeout--;
-      s->controls_seen = false;
     }
 
     read_param_bool_timeout(&s->is_metric, "IsMetric", &s->is_metric_timeout);
@@ -1008,11 +979,6 @@ int main(int argc, char* argv[]) {
 
   set_awake(s, true);
   ui_sound_destroy();
-
-  // wake up bg thread to exit
-  pthread_mutex_lock(&s->lock);
-  pthread_cond_signal(&s->bg_cond);
-  pthread_mutex_unlock(&s->lock);
 
 #ifdef QCOM
   // join light_sensor_thread?

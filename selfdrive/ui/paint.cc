@@ -838,7 +838,6 @@ static void ui_draw_vision(UIState *s) {
 
   glClear(GL_STENCIL_BUFFER_BIT);
 
-  nvgBeginFrame(s->vg, s->fb_w, s->fb_h, 1.0f);
   nvgSave(s->vg);
 
   // Draw augmented elements
@@ -862,10 +861,6 @@ static void ui_draw_vision(UIState *s) {
   } else {
     ui_draw_vision_footer(s);
   }
-
-
-  nvgEndFrame(s->vg);
-  glDisable(GL_BLEND);
 }
 
 static void ui_draw_background(UIState *s) {
@@ -874,12 +869,15 @@ static void ui_draw_background(UIState *s) {
   const uint8_t *color = bg_colors[bg_status];
   glClearColor(color[0]/256.0, color[1]/256.0, color[2]/256.0, 0.0);
   glClear(GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 // all GL calls should be in here
-// TODO: remove ui_draw_vision_alert from ui.cc
 void ui_draw(UIState *s) {
   ui_draw_background(s);
+
+  nvgBeginFrame(s->vg, s->fb_w, s->fb_h, 1.0f);
   if (s->vision_connected && s->active_app == cereal_UiLayoutState_App_home && s->status != STATUS_STOPPED) {
     ui_draw_sidebar(s);
     ui_draw_vision(s);
@@ -889,16 +887,34 @@ void ui_draw(UIState *s) {
     }
   }
 
-  {
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glClear(GL_STENCIL_BUFFER_BIT);
+  if (s->controls_timeout == 0) {
+    // stop playing alert sound
+    if ((!s->vision_connected || (s->vision_connected && s->alert_sound_timeout == 0)) &&
+          s->alert_sound != cereal_CarControl_HUDControl_AudibleAlert_none) {
+      stop_alert_sound(s->alert_sound);
+      s->alert_sound = cereal_CarControl_HUDControl_AudibleAlert_none;
+    }
 
-    nvgBeginFrame(s->vg, s->fb_w, s->fb_h, 1.0f);
+    // if visiond is still running and controlsState times out, display an alert
+    if (s->controls_seen && s->vision_connected && strcmp(s->scene.alert_text2, "Controls Unresponsive") != 0) {
+      s->scene.alert_size = ALERTSIZE_FULL;
+      if (s->status != STATUS_STOPPED) {
+        s->status = STATUS_ALERT;
+      }
+      snprintf(s->scene.alert_text1, sizeof(s->scene.alert_text1), "%s", "TAKE CONTROL IMMEDIATELY");
+      snprintf(s->scene.alert_text2, sizeof(s->scene.alert_text2), "%s", "Controls Unresponsive");
+      ui_draw_vision_alert(s, s->scene.alert_size, s->status, s->scene.alert_text1, s->scene.alert_text2);
 
-    nvgEndFrame(s->vg);
-    glDisable(GL_BLEND);
+      s->alert_sound_timeout = 2 * UI_FREQ;
+
+      s->alert_sound = cereal_CarControl_HUDControl_AudibleAlert_chimeWarningRepeat;
+      play_alert_sound(s->alert_sound);
+    }
+    s->alert_sound_timeout--;
+    s->controls_seen = false;
   }
+
+  nvgEndFrame(s->vg);
 }
 
 #ifdef NANOVG_GL3_IMPLEMENTATION
